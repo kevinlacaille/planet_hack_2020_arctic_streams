@@ -38,27 +38,37 @@ function detectBeads(spatialFilterKernelSize, spatialThreshold, waterThreshold)
         % Resolution of data (m / px)
         resolution = 3;
         % Spatial filter kernel size (px)
-        spatialFilterKernelSize = ceil(poolWidth / resolution);
+        spatialFilterKernelSize = 5;%ceil(poolWidth / resolution);
         % Spatial threshold value
         spatialThreshold = 1;
         % Water threshold value
         waterThreshold = 0.1;
     end
 
-    % Import data
-    waterIndexMap = imread("Planet_MNDWI.tif");
-    % Select only part of data where data exists
-    waterIndexMap = waterIndexMap(180:510, 940:1280);
+    for ii = 1:8
+        % Import data
+    %     waterIndexMap = imread("Planet_MNDWI.tif");
+        waterIndexMap = imread("Beaded_" + ii + ".tif");
 
-%     % Spatially filter data
-%     spatiallyFilteredData = differenceOfGaussians(waterIndex, spatialFilterKernelSize);
 
-    % Detect beads
-    detectionStruct = getDetections(waterIndexMap, spatialFilterKernelSize, spatialThreshold, waterThreshold);
+    %     % Select only part of data where data exists
+    %     % OG
+    %     waterIndexMap = waterIndexMap(180:510, 940:1280);
+    %     % 1
+    %     waterIndexMap = waterIndexMap(170:485, 1:end);
+    %     % 2
+    %     waterIndexMap = waterIndexMap(15:527, 184:680);
 
-    % Visualize data
-    visualizeData(waterIndexMap, detectionStruct, poolWidth, resolution);
+    %     % Spatially filter data
+    %     spatiallyFilteredData = differenceOfGaussians(waterIndex, spatialFilterKernelSize);
 
+        % Detect beads
+        detectionStruct = getDetections(waterIndexMap, spatialFilterKernelSize, spatialThreshold, waterThreshold);
+
+        % Visualize data
+        visualizeData(waterIndexMap, detectionStruct, poolWidth, resolution, ii);
+    end
+    
 end
 
 function spatiallyFilteredData = differenceOfGaussians(inputData, spatialFilterKernelSize)
@@ -121,6 +131,8 @@ function detectionStruct = getDetections(inputData, spatialFilterKernelSize, spa
     processedMeanDiff(processedMeanDiff < waterThreshold) = 0;
     threshMask = processedMeanDiff > (spatialThreshold * stdMap);
 
+% %     imagesc(imfuse(inputData, threshMask, 'blend', 0.5))
+
     % Only return hits that survive NMS and thresholding
     outputMask = nmsMask & threshMask;
     % Output mask convolved with filter size for detections
@@ -133,7 +145,7 @@ function detectionStruct = getDetections(inputData, spatialFilterKernelSize, spa
 
 end
 
-function visualizeData(inputData, detectionStruct, poolWidth, resolution)
+function visualizeData(inputData, detectionStruct, poolWidth, resolution, ii)
 % visualizeData visualizes the data and detections of beaded streams.
 %
 %    Inputs:
@@ -146,19 +158,24 @@ function visualizeData(inputData, detectionStruct, poolWidth, resolution)
 %
 
 
-    % Visualize data
-    figure(1)
-    imagesc(inputData);
-    hold on
-    title("Normalized difference")
-    hold off
+%     % Visualize data
+%     figure(1)
+%     imagesc(inputData);
+%     hold on
+%     title("Normalized difference")
+%     hold off
 
     % Visualize detections
-    figure(2)
-    ims = imagesc(inputData);
+    figure(ii)
+    ims = imagesc(inputData, [-0.8, -0.3]);
     hold on
-    title(sprintf("Number of beads detected: %i", size(detectionStruct,1)))
+    set(gca, 'xtick', [])
+    set(gca, 'xticklabel', [])
+    set(gca, 'ytick', [])
+    set(gca, 'yticklabel', [])
 
+
+    nBeads = 0;
     % Draw boxes around all detections
     for jj = 1:numel(detectionStruct)
         % 
@@ -166,18 +183,19 @@ function visualizeData(inputData, detectionStruct, poolWidth, resolution)
             colour = 'black';
         else
             colour = 'red';
+            nBeads = nBeads + 1;
         end
         
         drawrectangle(ims.Parent, 'Position', ...
             [detectionStruct(jj).Centroid(1) - detectionStruct(jj).BoundingBox(3) / 2, ...
              detectionStruct(jj).Centroid(2) - detectionStruct(jj).BoundingBox(4) / 2, ...
              detectionStruct(jj).BoundingBox(3), detectionStruct(jj).BoundingBox(4)], ...
-            'Interactions','none', 'Color', colour, 'FaceAlpha', 0);
+            'Interactions','none', 'Color', colour, 'FaceAlpha', 0, 'LineWidth', 1);
 
     end
-
+    title(sprintf("Number of beads detected: %i", nBeads))
+    hold off
+    
+    saveas(gcf, "Beaded_withdets_" +ii + ".png")
+    
 end
-
-%             [detectionStruct(jj).BoundingBox(1) - detectionStruct(jj).BoundingBox(3)/2, ...
-%              detectionStruct(jj).BoundingBox(2) - detectionStruct(jj).BoundingBox(4)/2, ...
-%              detectionStruct(jj).BoundingBox(3), detectionStruct(jj).BoundingBox(4)], ...
